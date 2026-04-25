@@ -352,14 +352,15 @@ launch_parallel() {
 cmd_status() {
     local dir="${1:-$LOG_DIR}"
     if [[ ! -d "$dir" ]]; then err "Log dir $dir not found"; exit 1; fi
-    printf "%-40s %-18s %s\n" "DRIVE" "STAGE" "LATEST"
-    printf "%-40s %-18s %s\n" "----------------------------------------" "------------------" "----------------"
+    printf "%-40s %-18s %-12s %s\n" "DRIVE" "STAGE" "PASS" "LATEST"
+    printf "%-40s %-18s %-12s %s\n" "----------------------------------------" "------------------" "------------" "----------------"
     for s in "$dir"/state_*; do
         [[ -f "$s" ]] || continue
         local tag="${s##*/state_}"
         local stage; stage="$(cat "$s" 2>/dev/null | sed 's/STAGE=//')"
         local logf="$dir/burnin_${tag}.log"
         local last=""
+        local pass_col="-"
         [[ -f "$logf" ]] && last="$(tail -n 1 "$logf" 2>/dev/null | cut -c1-60)"
         # If badblocks running, show pass/phase/progress from its log.
         # badblocks separates progress updates with \b (backspace), not newlines —
@@ -383,9 +384,10 @@ cmd_status() {
                 0x00) pass_idx=4 ;;
                 *)    pass_idx="?" ;;
             esac
-            [[ -n "$pct" ]] && last="pass ${pass_idx}/4 ${phase} ${pct}"
+            pass_col="${pass_idx}/4 ${phase}"
+            last="$pct"
         fi
-        printf "%-40s %-18s %s\n" "$tag" "$stage" "$last"
+        printf "%-40s %-18s %-12s %s\n" "$tag" "$stage" "$pass_col" "$last"
     done
 }
 
