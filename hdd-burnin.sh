@@ -387,6 +387,24 @@ cmd_status() {
             pass_col="${pass_idx}/4 ${phase}"
             last="$pct"
         fi
+        # If a SMART self-test is running, ask smartctl for current %-complete.
+        # smartctl reports "% of test remaining" — invert to match badblocks' "% done".
+        if [[ "$stage" == smart_* ]]; then
+            local serial dev rem
+            serial="${tag##*_}"
+            dev="$(lsblk -d -n -o NAME,SERIAL 2>/dev/null \
+                    | awk -v s="$serial" '$2 == s {print "/dev/"$1; exit}')"
+            if [[ -n "$dev" ]]; then
+                rem="$(smartctl -c "$dev" 2>/dev/null | awk '
+                    /% of test remaining/ {
+                        if (match($0, /[0-9]+%/)) {
+                            print substr($0, RSTART, RLENGTH-1)
+                            exit
+                        }
+                    }')"
+                [[ -n "$rem" ]] && last="$((100 - rem))% done"
+            fi
+        fi
         printf "%-40s %-18s %-12s %s\n" "$tag" "$stage" "$pass_col" "$last"
     done
 }
